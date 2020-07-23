@@ -59,15 +59,15 @@ new EmlParser(fs.createReadStream('test.eml'))
 .getEmailHeaders()
 .then(headers  => {
 	//properties of headers object
-	{
-		subject:  result.subject,
-		from:  result.from.value,
-		to:  result.to.value,
-		cc:  result.cc.value,
-		date:  result.date,
-		inReplyTo:  result.inReplyTo,
-		messageId:  result.messageId
-	}
+	//{
+	//	subject:  result.subject,
+	//	from:  result.from.value,
+	//	to:  result.to.value,
+	//	cc:  result.cc.value,
+	//	date:  result.date,
+	//	inReplyTo:  result.inReplyTo,
+	//	messageId:  result.messageId
+	//}
 	console.log(headers)
 })
 .catch(err  => {
