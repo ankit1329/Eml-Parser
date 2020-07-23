@@ -1,5 +1,7 @@
 # Eml-Parser
 
+### Parse .eml file, convert to pdf, html, jpeg, png and extract attachments from .eml files
+
 ## installation
 `npm i eml-parser --save`
 
