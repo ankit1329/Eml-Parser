@@ -1,5 +1,8 @@
 # Eml-Parser
 
+## installation
+`npm i eml-parser --save`
+
 ## Quick Start
  ```
  const  EmlParser = require('eml-parser');
