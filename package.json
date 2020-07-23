@@ -1,0 +1,15 @@
+{
+  "name": "eml-parser",
+  "version": "1.0.0",
+  "description": "Parse .eml files. Convert .eml files to pdf, html, jpeg or png. Extract headers and attahments from .eml files.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "html-pdf": "^2.2.0",
+    "mailparser": "^2.7.7"
+  }
+}
