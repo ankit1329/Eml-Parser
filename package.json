@@ -2,14 +2,38 @@
   "name": "eml-parser",
   "version": "1.0.0",
   "description": "Parse .eml files. Convert .eml files to pdf, html, jpeg or png. Extract headers and attahments from .eml files.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "html-pdf": "^2.2.0",
     "mailparser": "^2.7.7"
-  }
+  },
+  "homepage": "https://github.com/ankit1329/Eml-Parser",
+  "bugs": {
+    "url": "https://github.com/ankit1329/Eml-Parser/issues",
+    "email": "akhouriankitprakash@gmail.com"
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ankit1329/Eml-Parser.git"
+  },
+  "author": "Ankit <akhouriankitprakash@gmail.com> (https://www.linkedin.com/in/ankit1329)",
+  "license": "MIT",
+  "private": false,
+  "keywords": [
+    "email",
+    "email-parser",
+    "eml",
+    "parser",
+    "eml-parser",
+    "converter",
+    "emltopdf",
+    "eml-to-pdf",
+    "emltohtml",
+    "eml-to-html",
+    "emltojpeg",
+    "eml-to-jpeg",
+    "emltopng",
+    "eml-to-png",
+    ".eml"
+  ]
 }
