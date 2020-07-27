@@ -83,11 +83,12 @@ module.exports = EmlParser = function (fileReadStream) {
                         <div style="font-size:12px;">
                             To:&nbsp;${result.to.html}
                         </div>
-                        <div style="font-size:12px;">
-                            Cc:&nbsp;${result.cc.html}
-                        </div>
-                    </div>
                     `
+                    if (result.cc) {
+                        headerHtml = headerHtml + `<div style="font-size:12px;">Cc:&nbsp;${result.cc.html}</div></div>`
+                    } else {
+                        headerHtml = headerHtml + `</div>`;
+                    }
                     this.getEmailBodyHtml()
                         .then(bodyHtml => {
                             resolve(headerHtml + `<p>${bodyHtml}</p>`)
