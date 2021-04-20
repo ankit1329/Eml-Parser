@@ -54,6 +54,9 @@ module.exports = EmlParser = function (fileReadStream) {
             this.parseEml()
                 .then(result => {
                     let htmlString = result.html;
+                    if (!htmlString) {
+                        resolve('');
+                    }
                     for (var key in replacements) {
                         let re = new RegExp(key, 'gi')
                         htmlString = htmlString.replace(re, replacements[key]);
