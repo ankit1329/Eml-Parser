@@ -34,8 +34,8 @@ constructor takes a [Read Stream](https://nodejs.org/api/fs.html#fs_fs_createrea
 new EmlParser(fs.createReadStream('test.eml'))
 .parseEml()
 .then(result  => {
-	//properties in result object:
-	//{
+	// properties in result object:
+	// {
 	//	"attachments": [],
 	//	"headers": {},
 	//	"headerLines": [],
@@ -50,7 +50,7 @@ new EmlParser(fs.createReadStream('test.eml'))
 	//	"cc": {},
 	//	"messageId": "",
 	//	"inReplyTo": ""
-	}
+	// }
 	console.log(result);
 })
 .catch(err  => {
