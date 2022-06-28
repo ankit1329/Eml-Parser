@@ -83,10 +83,10 @@ module.exports = EmlParser = function (fileReadStream) {
                             <span style="flex: 1 1 auto;"></span>
                             <span style="color:silver;font-weight:600">${new Date(result.date).toLocaleString()}</span>
                         </div>
-                        <div style="font-size:12px;">
-                            To:&nbsp;${result.to.html}
-                        </div>
                     `
+                    if (result.to) {
+                        headerHtml = headerHtml + `<div style="font-size:12px;">To:&nbsp;${result.to.html}</div>`
+                    }
                     if (result.cc) {
                         headerHtml = headerHtml + `<div style="font-size:12px;">Cc:&nbsp;${result.cc.html}</div></div>`
                     } else {
@@ -107,13 +107,16 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
-    this.convertEmailToStream = (type) => {
+    this.convertEmailToStream = (type, orientation, format) => {
         return new Promise((resolve, reject) => {
             let options = {
-                orientation: 'landscape'
+                orientation: orientation || 'landscape' // potrait | landscape
             };
             if (type) {
                 options.type = type;
+            }
+            if (format) {
+                options.format = format // A3, A4, A5, Legal, Letter, Tabloid
             }
             this.getEmailAsHtml()
                 .then(html => {
@@ -130,13 +133,16 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
-    this.convertEmailToBuffer = (type) => {
+    this.convertEmailToBuffer = (type, orientation, format) => {
         return new Promise((resolve, reject) => {
             let options = {
-                orientation: 'landscape'
+                orientation: orientation || 'landscape'  // potrait | landscape
             };
             if (type) {
                 options.type = type;
+            }
+            if (format) {
+                options.format = format // A3, A4, A5, Legal, Letter, Tabloid
             }
             this.getEmailAsHtml()
                 .then(html => {
