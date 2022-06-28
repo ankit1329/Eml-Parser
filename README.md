@@ -108,9 +108,9 @@ new EmlParser(fs.createReadStream('test.eml'))
 
 #### convertEmailToStream
 takes 3 optional arguments
-	- `type:'pdf'|'jpeg'|'png'`, defaults to: 'pdf'
-	- `orientation:'potrait'|'landscape'`, defaults to: 'landscape'
-	- `format:'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'`
+* `type:'pdf'|'jpeg'|'png'`, defaults to: 'pdf'
+* `orientation:'potrait'|'landscape'`, defaults to: 'landscape'
+* `format:'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'`
 returns a stream which can be piped to a [Write Stream](https://nodejs.org/api/fs.html#fs_fs_createwritestream_path_options) to write to a file.
 ```
 let  file = fs.createReadStream('test.eml')
@@ -126,9 +126,9 @@ new  EmlParser(file)
 
 #### convertEmailToBuffer
 takes 3 optional arguments:
-	- `type:'pdf'|'jpeg'|'png'`, defaults to: 'pdf'
-	- `orientation:'potrait'|'landscape'`, defaults to: 'landscape'
-	- `format:'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'`
+* `type:'pdf'|'jpeg'|'png'`, defaults to: 'pdf'
+* `orientation:'potrait'|'landscape'`, defaults to: 'landscape'
+* `format:'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'`
 returns a buffer object which can be used to write to a file using [fs.write](https://nodejs.org/api/fs.html#fs_fs_write_fd_buffer_offset_length_position_callback).
 ```
 let  file = fs.createReadStream('test.eml')
