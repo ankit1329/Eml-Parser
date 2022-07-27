@@ -1,10 +1,10 @@
 {
   "name": "eml-parser",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Parse .eml files or convert to pdf, html, jpeg or png format. Extract headers and attachments from .eml files.",
   "dependencies": {
     "html-pdf": "^3.0.1",
-    "mailparser": "^2.7.7"
+    "mailparser": "^3.5.0"
   },
   "homepage": "https://github.com/ankit1329/Eml-Parser",
   "bugs": {
