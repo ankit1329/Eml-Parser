@@ -31,9 +31,9 @@ module.exports = EmlParser = function (fileReadStream) {
                         subject: result.subject,
                         from: result.from.value,
                         to: result.to.value,
-                        cc: result.cc.value,
+                        cc: result.cc?.value,
                         date: result.date,
-                        inReplyTo: result.inReplyTo,
+                        inReplyTo: result?.inReplyTo,
                         messageId: result.messageId
                     }
                     resolve(headers)
