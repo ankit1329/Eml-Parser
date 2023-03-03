@@ -6,13 +6,16 @@ module.exports = EmlParser = function (fileReadStream) {
 
     this.parsedEmail;
 
-    this.parseEml = () => {
+    this.parseEml = (options) => {
         return new Promise((resolve, reject) => {
             if (this.parsedEmail) {
                 resolve(this.parsedEmail);
             } else {
                 simpleParser(fileReadStream, {})
                     .then(result => {
+                        if (options && options.ignoreEmbedded) {
+                            result.attachments = result.attachments.filter(att => att.contentDisposition === 'attachment');
+                        }
                         this.parsedEmail = result;
                         resolve(this.parsedEmail);
                     })
@@ -159,10 +162,25 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
-    this.getEmailAttachments = () => {
+    this.getEmailAttachments = (options) => {
         return new Promise((resolve, reject) => {
             this.parseEml()
                 .then(result => {
+                    if (options && options.ignoreEmbedded) {
+                        result.attachments = result.attachments.filter(att => att.contentDisposition === 'attachment');
+                    }
+                    resolve(result.attachments);
+                })
+                .catch(err => {
+                    reject(err);
+                })
+        })
+    }
+    this.getEmailEmbeddedFiles = () => {
+        return new Promise((resolve, reject) => {
+            this.parseEml()
+                .then(result => {
+                    result.attachments = result.attachments.filter(att => att.contentDisposition !== 'attachment');
                     resolve(result.attachments);
                 })
                 .catch(err => {

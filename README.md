@@ -30,9 +30,12 @@ constructor takes a [Read Stream](https://nodejs.org/api/fs.html#fs_fs_createrea
 
 ### Methods
 #### parseEml
+takes 1 optional argument:
+* `{ignoreEmbedded: true}`, use this to ignore embedded files from appearing under attachments
+return the parsed eml object
 ```
 new EmlParser(fs.createReadStream('test.eml'))
-.parseEml()
+.parseEml(options?) //options: {ignoreEmbedded: true} to ignore embedded files
 .then(result  => {
 	// properties in result object:
 	// {
@@ -143,14 +146,40 @@ new  EmlParser(file)
 ```
 
 #### getEmailAttachments
+takes 1 optional argument:
+* `{ignoreEmbedded: true}`, defaults to false
+return the list of attachments
 ```
 let  file = fs.createReadStream('test.eml')
 new  EmlParser(file)
-.getEmailAttachments()
+.getEmailAttachments(options?) //options: {ignoreEmbedded: true} to ignore embedded files
 .then(attachments  => {
-	attachments.forEach(attch  => {
-		//attch.content is the buffer object
-		console.log(attch.filename, attach.content);
+	attachments.forEach(attachment  => {
+		//attachment.content is the buffer object
+		console.log(attachment.filename, attachment.content);
+		.then(res  => {
+			console.log(res);
+		})
+		.catch(err  => {
+		console.log(err);
+		})
+	});
+})
+.catch(err  => {
+	console.log(err);
+})
+```
+
+#### getEmailEmbeddedFiles
+returns the list of only embedded files
+```
+let  file = fs.createReadStream('test.eml')
+new  EmlParser(file)
+.getEmailEmbeddedFiles()
+.then(embeddedFiles  => {
+	embeddedFiles.forEach(embed  => {
+		//embed.content is the buffer object
+		console.log(embed.filename, embed.content);
 		.then(res  => {
 			console.log(res);
 		})
