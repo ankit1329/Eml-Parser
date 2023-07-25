@@ -20,6 +20,10 @@ new  EmlParser(emailFile).convertEmailToStream('pdf')
 	console.log(err);
 })
  ```
+## Change Log
+### 1.2.2
+* added options `{highlightKeywords: String[], highlightCaseSensitive: true| undefined}` to highlight keywords provided in `highlightKeywords` option, `highlightCaseSensitive: true` will do case sensitive match to highlight keywords. Works with all functions which return email content in any format (html, pdf, image, etc).
+
 ## Reference
 
 ### Class: EmlParser
@@ -30,8 +34,9 @@ constructor takes a [Read Stream](https://nodejs.org/api/fs.html#fs_fs_createrea
 
 ### Methods
 #### parseEml
-takes 1 optional argument, returns the parsed eml object:
+takes 2 optional arguments, returns the parsed eml object.
 * `{ignoreEmbedded: true}`, use this to ignore embedded files from appearing under attachments
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 ```
 new EmlParser(fs.createReadStream('test.eml'))
 .parseEml(options?) //options: {ignoreEmbedded: true} to ignore embedded files
@@ -83,7 +88,8 @@ new EmlParser(fs.createReadStream('test.eml'))
 ```
 
 #### getEmailBodyHtml
-returns email content as a html string (without headers like subject, from, etc)
+takes 1 optional argument, returns email content as a html string (without headers like subject, from, etc).
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 ```
 new EmlParser(fs.createReadStream('test.eml'))
 .getEmailBodyHtml()
@@ -96,7 +102,8 @@ new EmlParser(fs.createReadStream('test.eml'))
 ```
 
 #### getEmailAsHtml
-returns whole email as a html string (including headers like subject, from, etc)
+takes 1 optional argument, returns whole email as a html string (including headers like subject, from, etc).
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 ```
 new EmlParser(fs.createReadStream('test.eml'))
 .getEmailAsHtml()
@@ -109,10 +116,11 @@ new EmlParser(fs.createReadStream('test.eml'))
 ```
 
 #### convertEmailToStream
-takes 3 optional arguments, returns a stream which can be piped to a [Write Stream](https://nodejs.org/api/fs.html#fs_fs_createwritestream_path_options) to write to a file.
+takes 4 optional arguments, returns a stream which can be piped to a [Write Stream](https://nodejs.org/api/fs.html#fs_fs_createwritestream_path_options) to write to a file.
 * `type:'pdf'|'jpeg'|'png'`, defaults to: 'pdf'
 * `orientation:'potrait'|'landscape'`, defaults to: 'landscape'
 * `format:'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'`
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 ```
 let  file = fs.createReadStream('test.eml')
 new  EmlParser(file)
@@ -126,14 +134,15 @@ new  EmlParser(file)
 ```
 
 #### convertEmailToBuffer
-takes 3 optional arguments, returns a buffer object which can be used to write to a file using [fs.write](https://nodejs.org/api/fs.html#fs_fs_write_fd_buffer_offset_length_position_callback).:
+takes 4 optional arguments, returns a buffer object which can be used to write to a file using [fs.write](https://nodejs.org/api/fs.html#fs_fs_write_fd_buffer_offset_length_position_callback).:
 * `type:'pdf'|'jpeg'|'png'`, defaults to: 'pdf'
 * `orientation:'potrait'|'landscape'`, defaults to: 'landscape'
 * `format:'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'`
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 ```
 let  file = fs.createReadStream('test.eml')
 new  EmlParser(file)
-.convertEmailToBuffer('png')
+.convertEmailToBuffer(null, null, null, { highlightKeywords: ['foo', 'bar', 'baz', 'foo baz'], highlightCaseSensitive: true })
 .then(buffer  => {
 	//use fs.write to write into file
 })

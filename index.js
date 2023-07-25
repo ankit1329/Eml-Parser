@@ -1,6 +1,6 @@
-const fs = require('fs');
 const simpleParser = require('mailparser').simpleParser;
 const pdf = require('html-pdf');
+const isStringsArray = arr => arr.every(i => typeof i === "string")
 
 module.exports = EmlParser = function (fileReadStream) {
 
@@ -15,6 +15,15 @@ module.exports = EmlParser = function (fileReadStream) {
                     .then(result => {
                         if (options && options.ignoreEmbedded) {
                             result.attachments = result.attachments.filter(att => att.contentDisposition === 'attachment');
+                        }
+                        if (options && options.highlightKeywords) {
+                            if (!Array.isArray(options.highlightKeywords)) throw new Error('err: highlightKeywords is not an array, expected: String[]');
+                            if (!isStringsArray(options.highlightKeywords)) throw new Error('err: highlightKeywords contains non-string values, expected: String[]');
+                            let flags = 'gi';
+                            if (options.highlightCaseSensitive) flags = 'g';
+                            options.highlightKeywords.forEach(keyword => {
+                                result.html = result.html.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
+                            });
                         }
                         this.parsedEmail = result;
                         resolve(this.parsedEmail);
@@ -48,13 +57,13 @@ module.exports = EmlParser = function (fileReadStream) {
     }
 
 
-    this.getEmailBodyHtml = () => {
+    this.getEmailBodyHtml = (options) => {
         let replacements = {
             "’": "'",
             "–": "&#9472;"
         }
         return new Promise((resolve, reject) => {
-            this.parseEml()
+            this.parseEml(options)
                 .then(result => {
                     let htmlString = result.html;
                     if (!htmlString) {
@@ -73,9 +82,9 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
-    this.getEmailAsHtml = () => {
+    this.getEmailAsHtml = (options) => {
         return new Promise((resolve, reject) => {
-            this.parseEml()
+            this.parseEml(options)
                 .then(result => {
 
                     let headerHtml = `
@@ -110,7 +119,7 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
-    this.convertEmailToStream = (type, orientation, format) => {
+    this.convertEmailToStream = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
                 orientation: orientation || 'landscape' // potrait | landscape
@@ -121,7 +130,7 @@ module.exports = EmlParser = function (fileReadStream) {
             if (format) {
                 options.format = format // A3, A4, A5, Legal, Letter, Tabloid
             }
-            this.getEmailAsHtml()
+            this.getEmailAsHtml(outerOptions)
                 .then(html => {
                     pdf.create(html, options).toStream(function (err, res) {
                         if (err) {
@@ -136,7 +145,7 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
-    this.convertEmailToBuffer = (type, orientation, format) => {
+    this.convertEmailToBuffer = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
                 orientation: orientation || 'landscape'  // potrait | landscape
@@ -147,7 +156,7 @@ module.exports = EmlParser = function (fileReadStream) {
             if (format) {
                 options.format = format // A3, A4, A5, Legal, Letter, Tabloid
             }
-            this.getEmailAsHtml()
+            this.getEmailAsHtml(outerOptions)
                 .then(html => {
                     pdf.create(html, options).toBuffer(function (err, res) {
                         if (err) {
