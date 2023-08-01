@@ -1,6 +1,24 @@
 const simpleParser = require('mailparser').simpleParser;
 const pdf = require('html-pdf');
-const isStringsArray = arr => arr.every(i => typeof i === "string")
+const MsgReader = require('@kenjiuno/msgreader').default
+const decompressRTF = require('@kenjiuno/decompressrtf').decompressRTF;
+const iconv = require("iconv-lite");
+const rtfParser = require("rtf-stream-parser");
+
+const isStringsArray = arr => arr.every(i => typeof i === "string");
+
+function stream2buffer(stream) {
+
+    return new Promise((resolve, reject) => {
+
+        const _buf = [];
+
+        stream.on("data", (chunk) => _buf.push(chunk));
+        stream.on("end", () => resolve(Buffer.concat(_buf)));
+        stream.on("error", (err) => reject(err));
+
+    });
+}
 
 module.exports = EmlParser = function (fileReadStream) {
 
@@ -35,6 +53,25 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    this.parseMsg = async (options) => {
+        let buffer = await stream2buffer(fileReadStream)
+        this.parsedEmail = new MsgReader(buffer).getFileData();
+        let outputArray = decompressRTF(this.parsedEmail.compressedRtf);
+        let decompressedRtf = Buffer.from(outputArray).toString("ascii");
+        this.parsedEmail.html = rtfParser.deEncapsulateSync(decompressedRtf, { decode: iconv.decode }).text;
+        if (options && options.highlightKeywords) {
+            if (!Array.isArray(options.highlightKeywords)) throw new Error('err: highlightKeywords is not an array, expected: String[]');
+            if (!isStringsArray(options.highlightKeywords)) throw new Error('err: highlightKeywords contains non-string values, expected: String[]');
+            let flags = 'gi';
+            if (options.highlightCaseSensitive) flags = 'g';
+            options.highlightKeywords.forEach(keyword => {
+                this.parsedEmail.html = this.parsedEmail.html.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
+            });
+        }
+        delete this.parsedEmail.compressedRtf;
+        return this.parsedEmail;
+    }
+
     this.getEmailHeaders = () => {
         return new Promise((resolve, reject) => {
             this.parseEml()
@@ -56,6 +93,27 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    this.getMessageHeaders = () => {
+        return new Promise((resolve, reject) => {
+            this.parseMsg()
+                .then(result => {
+                    let headers = {
+                        subject: result.subject,
+                        from: [{
+                            name: result.senderName,
+                            address: result.senderEmail
+                        }],
+                        to: result.recipients.filter(recipient => recipient.recipType === 'to').map(recipient => { return { name: recipient.name, address: recipient.email } }),
+                        cc: result.recipients.filter(recipient => recipient.recipType === 'cc').map(recipient => { return { name: recipient.name, address: recipient.email } }),
+                        date: result.messageDeliveryTime
+                    }
+                    resolve(headers)
+                })
+                .catch(err => {
+                    reject(err);
+                })
+        })
+    }
 
     this.getEmailBodyHtml = (options) => {
         let replacements = {
@@ -79,6 +137,18 @@ module.exports = EmlParser = function (fileReadStream) {
                     reject(err);
                 })
 
+        })
+    }
+
+    this.getMessageBodyHtml = (options) => {
+        return new Promise((resolve, reject) => {
+            this.parseMsg(options)
+                .then(result => {
+                    resolve(result.html)
+                })
+                .catch(err => {
+                    reject(err)
+                })
         })
     }
 
@@ -119,6 +189,49 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    this.getMessageAsHtml = (options) => {
+        return new Promise((resolve, reject) => {
+            this.parseMsg(options)
+                .then(result => {
+                    // console.log(result.recipients)
+                    let toRecipients = result.recipients.filter(recipient => recipient.recipType === 'to').map(recipient => { return { name: recipient.name, address: recipient.email } })
+                    let ccRecipients = result.recipients.filter(recipient => recipient.recipType === 'cc').map(recipient => { return { name: recipient.name, address: recipient.email } })
+                    let toHtml = '';
+                    let ccHtml = '';
+                    toRecipients.forEach(recipient => {
+                        toHtml += `<span>${recipient.name}</span> &lt;<a href=\"mailto:${recipient.address}\" class=\"mp_address_email\">${recipient.address}</a>&gt;` + ';'
+                    });
+                    ccRecipients.forEach(recipient => {
+                        ccHtml += `<span>${recipient.name}</span> &lt;<a href=\"mailto:${recipient.address}\" class=\"mp_address_email\">${recipient.address}</a>&gt;` + ';'
+                    });
+                    // console.log(toHtml,'\n')
+                    // console.log(ccHtml)
+                    let headerHtml = `
+                    <div style="border:1px solid gray;margin-bottom:5px;padding:5px">
+                        <h2>${result.subject}</h2>
+                        <div style="display:flex;width:100%;">
+                            <span style="font-weight:600;">From:&nbsp;<span>${result.senderName}</span> &lt;<a href=\"mailto:${result.senderEmail}\" class=\"mp_address_email\">${result.senderEmail}</a>&gt;</span>
+                            <span style="flex: 1 1 auto;"></span>
+                            <span style="color:silver;font-weight:600">${new Date(result.messageDeliveryTime).toLocaleString()}</span>
+                        </div>
+                    `
+                    if (toHtml) {
+                        headerHtml = headerHtml + `<div style="font-size:12px;">To:&nbsp;${toHtml}</div>`
+                    }
+                    if (ccHtml) {
+                        headerHtml = headerHtml + `<div style="font-size:12px;">Cc:&nbsp;${ccHtml}</div>`
+                    } else {
+                        headerHtml = headerHtml + `</div>`;
+                    }
+                    resolve(headerHtml + `<p>${result.html}</p>`)
+                })
+                .catch(err => {
+                    reject(err);
+                })
+
+        })
+    }
+
     this.convertEmailToStream = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
@@ -131,6 +244,32 @@ module.exports = EmlParser = function (fileReadStream) {
                 options.format = format // A3, A4, A5, Legal, Letter, Tabloid
             }
             this.getEmailAsHtml(outerOptions)
+                .then(html => {
+                    pdf.create(html, options).toStream(function (err, res) {
+                        if (err) {
+                            reject(err);
+                        }
+                        resolve(res);
+                    });
+                })
+                .catch(err => {
+                    reject(err);
+                })
+        })
+    }
+
+    this.convertMessageToStream = (type, orientation, format, outerOptions) => {
+        return new Promise((resolve, reject) => {
+            let options = {
+                orientation: orientation || 'landscape' // potrait | landscape
+            };
+            if (type) {
+                options.type = type;
+            }
+            if (format) {
+                options.format = format // A3, A4, A5, Legal, Letter, Tabloid
+            }
+            this.getMessageAsHtml(outerOptions)
                 .then(html => {
                     pdf.create(html, options).toStream(function (err, res) {
                         if (err) {
@@ -171,6 +310,32 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    this.convertMessageToBuffer = (type, orientation, format, outerOptions) => {
+        return new Promise((resolve, reject) => {
+            let options = {
+                orientation: orientation || 'landscape'  // potrait | landscape
+            };
+            if (type) {
+                options.type = type;
+            }
+            if (format) {
+                options.format = format // A3, A4, A5, Legal, Letter, Tabloid
+            }
+            this.getMessageAsHtml(outerOptions)
+                .then(html => {
+                    pdf.create(html, options).toBuffer(function (err, res) {
+                        if (err) {
+                            reject(err);
+                        }
+                        resolve(res);
+                    });
+                })
+                .catch(err => {
+                    reject(err);
+                })
+        })
+    }
+
     this.getEmailAttachments = (options) => {
         return new Promise((resolve, reject) => {
             this.parseEml()
@@ -185,6 +350,19 @@ module.exports = EmlParser = function (fileReadStream) {
                 })
         })
     }
+
+    this.getMessageAttachments = () => {
+        return new Promise((resolve, reject) => {
+            this.parseMsg()
+                .then(result => {
+                    resolve(result.attachments);
+                })
+                .catch(err => {
+                    reject(err);
+                })
+        })
+    }
+
     this.getEmailEmbeddedFiles = () => {
         return new Promise((resolve, reject) => {
             this.parseEml()
@@ -197,4 +375,5 @@ module.exports = EmlParser = function (fileReadStream) {
                 })
         })
     }
+
 }
