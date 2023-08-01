@@ -5,14 +5,26 @@
 ## installation
 `npm i eml-parser --save`
 
-## Quick Start
- ```
- const  EmlParser = require('eml-parser');
+## Quick 
+```
+const  EmlParser = require('eml-parser');
  const  fs = require('fs');
  
- let  emailFile = fs.createReadStream('./test.eml');
- 
+ let  emailFile = fs.createReadStream('./test.eml'); // or test.msg
+```
+#### .eml
+ ``` 
 new  EmlParser(emailFile).convertEmailToStream('pdf')
+.then(stream  => {
+	stream.pipe(fs.createWriteStream(emailFile.path + '.pdf'));
+})
+.catch(err  => {
+	console.log(err);
+})
+ ```
+ #### .msg
+ ``` 
+new  EmlParser(emailFile).convertMessageToStream('pdf')
 .then(stream  => {
 	stream.pipe(fs.createWriteStream(emailFile.path + '.pdf'));
 })
@@ -23,7 +35,8 @@ new  EmlParser(emailFile).convertEmailToStream('pdf')
 ## Change Log
 ### 1.2.2
 * added options `{highlightKeywords: String[], highlightCaseSensitive: true| undefined}` to highlight keywords provided in `highlightKeywords` option, `highlightCaseSensitive: true` will do case sensitive match to highlight keywords. Works with all functions which return email content in any format (html, pdf, image, etc).
-
+### 2.0.0
+* added .msg parser. Parsed results do not have the same fields, check result object below.
 ## Reference
 
 ### Class: EmlParser
@@ -32,7 +45,7 @@ new EmlParser(fs.createReadStream('test.eml'))
 ```
 constructor takes a [Read Stream](https://nodejs.org/api/fs.html#fs_fs_createreadstream_path_options) as input
 
-### Methods
+### Methods for .eml file
 #### parseEml
 takes 2 optional arguments, returns the parsed eml object.
 * `{ignoreEmbedded: true}`, use this to ignore embedded files from appearing under attachments
@@ -197,3 +210,68 @@ new  EmlParser(file)
 	console.log(err);
 })
 ```
+### Methods for .msg file
+#### parseMsg
+```
+new EmlParser(fs.createReadStream('test.msg'))
+.parseEml(options?) //options: {ignoreEmbedded: true} to ignore embedded files
+.then(result  => {
+	// properties in result object:
+	// {
+	//     "dataType": "msg",
+	//     "attachments": [],
+	//     "recipients": [
+	//         {
+	//             "dataType": "recipient",
+	//             "addressType": "",
+	//             "name": "",
+	//             "email": "",
+	//             "smtpAddress": "",
+	//             "recipType": "to"
+	//         },
+	//         {
+	//             "dataType": "recipient",
+	//             "addressType": "",
+	//             "name": "",
+	//             "email": "",
+	//             "smtpAddress": "",
+	//             "recipType": "cc"
+	//         }
+	//     ],
+	//     "messageClass": "",
+	//     "sentRepresentingSmtpAddress": "",
+	//     "lastModifierSMTPAddress": "",
+	//     "inetAcctName": "",
+	//     "subject": "",
+	//     "conversationTopic": "",
+	//     "normalizedSubject": "",
+	//     "body": "",
+	//     "lastModifierName": "",
+	//     "senderSmtpAddress": "",
+	//     "creatorSMTPAddress": "",
+	//     "creationTime": "",
+	//     "lastModificationTime": "",
+	//     "clientSubmitTime": "",
+	//     "messageDeliveryTime": "",
+	//     "messageFlags": 0,
+	//     "internetCodepage": 0,
+	//     "messageLocaleId": 0,
+	//     "messageCodepage": 0,
+	//     "headers": "",
+	//     "senderName": "",
+	//     "senderEmail": "",
+	//     "senderAddressType": "",
+	//     "html": ""
+	// }
+	console.log(result);
+})
+.catch(err  => {
+	console.log(err);
+})
+```
+#### getMessageHeaders
+#### getMessageBodyHtml
+#### getMessageAsHtml
+#### convertMessageToStream
+#### convertMessageToBuffer
+#### getMessageAttachments
