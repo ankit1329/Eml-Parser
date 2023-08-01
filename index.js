@@ -193,7 +193,6 @@ module.exports = EmlParser = function (fileReadStream) {
         return new Promise((resolve, reject) => {
             this.parseMsg(options)
                 .then(result => {
-                    // console.log(result.recipients)
                     let toRecipients = result.recipients.filter(recipient => recipient.recipType === 'to').map(recipient => { return { name: recipient.name, address: recipient.email } })
                     let ccRecipients = result.recipients.filter(recipient => recipient.recipType === 'cc').map(recipient => { return { name: recipient.name, address: recipient.email } })
                     let toHtml = '';
@@ -204,8 +203,6 @@ module.exports = EmlParser = function (fileReadStream) {
                     ccRecipients.forEach(recipient => {
                         ccHtml += `<span>${recipient.name}</span> &lt;<a href=\"mailto:${recipient.address}\" class=\"mp_address_email\">${recipient.address}</a>&gt;` + ';'
                     });
-                    // console.log(toHtml,'\n')
-                    // console.log(ccHtml)
                     let headerHtml = `
                     <div style="border:1px solid gray;margin-bottom:5px;padding:5px">
                         <h2>${result.subject}</h2>
