@@ -40,7 +40,11 @@ module.exports = EmlParser = function (fileReadStream) {
                             let flags = 'gi';
                             if (options.highlightCaseSensitive) flags = 'g';
                             options.highlightKeywords.forEach(keyword => {
-                                result.html = result.html.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
+                                if (result.html) {
+                                    result.html = result.html.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
+                                } else if (result.textAsHtml) {
+                                    result.textAsHtml = result.textAsHtml.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
+                                }
                             });
                         }
                         this.parsedEmail = result;
@@ -123,7 +127,7 @@ module.exports = EmlParser = function (fileReadStream) {
         return new Promise((resolve, reject) => {
             this.parseEml(options)
                 .then(result => {
-                    let htmlString = result.html;
+                    let htmlString = result.html || result.textAsHtml;
                     if (!htmlString) {
                         resolve('');
                     }
