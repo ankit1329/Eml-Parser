@@ -59,10 +59,17 @@ module.exports = EmlParser = function (fileReadStream) {
 
     this.parseMsg = async (options) => {
         let buffer = await stream2buffer(fileReadStream)
-        this.parsedEmail = new MsgReader(buffer).getFileData();
+        let emailData = new MsgReader(buffer)
+        this.parsedEmail = emailData.getFileData();
         let outputArray = decompressRTF(this.parsedEmail.compressedRtf);
         let decompressedRtf = Buffer.from(outputArray).toString("ascii");
         this.parsedEmail.html = rtfParser.deEncapsulateSync(decompressedRtf, { decode: iconv.decode }).text;
+
+        this.parsedEmail.attachments = this.parsedEmail.attachments.map(att => {
+            att.content = emailData.getAttachment(att).content;
+            return att;
+        })
+
         if (options && options.highlightKeywords) {
             if (!Array.isArray(options.highlightKeywords)) throw new Error('err: highlightKeywords is not an array, expected: String[]');
             if (!isStringsArray(options.highlightKeywords)) throw new Error('err: highlightKeywords contains non-string values, expected: String[]');
