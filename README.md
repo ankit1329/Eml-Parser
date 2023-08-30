@@ -52,7 +52,7 @@ takes 2 optional arguments, returns the parsed eml object.
 * `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 ```
 new EmlParser(fs.createReadStream('test.eml'))
-.parseEml(options?) //options: {ignoreEmbedded: true} to ignore embedded files
+.parseEml(options?)
 .then(result  => {
 	// properties in result object:
 	// {
@@ -214,7 +214,7 @@ new  EmlParser(file)
 #### parseMsg
 ```
 new EmlParser(fs.createReadStream('test.msg'))
-.parseEml(options?) //options: {ignoreEmbedded: true} to ignore embedded files
+.parseMsg(options?)
 .then(result  => {
 	// properties in result object:
 	// {
