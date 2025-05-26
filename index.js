@@ -61,14 +61,32 @@ module.exports = EmlParser = function (fileReadStream) {
         let buffer = await stream2buffer(fileReadStream)
         let emailData = new MsgReader(buffer)
         this.parsedEmail = emailData.getFileData();
-        let outputArray = decompressRTF(this.parsedEmail.compressedRtf);
-        let decompressedRtf = Buffer.from(outputArray).toString("ascii");
-        this.parsedEmail.html = rtfParser.deEncapsulateSync(decompressedRtf, { decode: iconv.decode }).text;
+        if (this.parsedEmail.compressedRtf) {
+            let outputArray = decompressRTF(this.parsedEmail.compressedRtf);
+            let decompressedRtf = Buffer.from(outputArray).toString("ascii");
+            this.parsedEmail.html = rtfParser.deEncapsulateSync(decompressedRtf, { decode: iconv.decode }).text;
+        } else if (this.parsedEmail.bodyHtml) {
+            this.parsedEmail.html = this.parsedEmail.bodyHtml;
+        } else if (this.parsedEmail.body) {
+            this.parsedEmail.html = `<pre>${this.parsedEmail.body}</pre>`;
+        } else if (this.parsedEmail.html && this.parsedEmail.html instanceof Uint8Array) {
+            // decode Uint8Array html to string
+            this.parsedEmail.html = Buffer.from(this.parsedEmail.html).toString('utf8');
+        } else if (this.parsedEmail.html && typeof this.parsedEmail.html === 'string') {
+            // already a string, use as is
+            // nothing to do
+        } else {
+            this.parsedEmail.html = '';
+        }
 
-        this.parsedEmail.attachments = this.parsedEmail.attachments.map(att => {
-            att.content = emailData.getAttachment(att).content;
-            return att;
-        })
+        if (this.parsedEmail.attachments && Array.isArray(this.parsedEmail.attachments)) {
+            this.parsedEmail.attachments = this.parsedEmail.attachments.map(att => {
+                att.content = emailData.getAttachment(att).content;
+                return att;
+            })
+        } else {
+            this.parsedEmail.attachments = [];
+        }
 
         if (options && options.highlightKeywords) {
             if (!Array.isArray(options.highlightKeywords)) throw new Error('err: highlightKeywords is not an array, expected: String[]');
