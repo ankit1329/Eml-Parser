@@ -1,10 +1,10 @@
 {
   "name": "eml-parser",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Parse .eml and .msg files or convert to pdf, html, jpeg or png format. Extract headers and attachments from .eml and msg files.",
   "dependencies": {
     "@kenjiuno/decompressrtf": "^0.1.4",
-    "@kenjiuno/msgreader": "^1.20.0-alpha.1",
+    "@kenjiuno/msgreader": "^1.22.0",
     "document-highlighter": "^2.1.0",
     "html-pdf": "^3.0.1",
     "iconv-lite": "^0.6.3",
