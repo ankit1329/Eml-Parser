@@ -28,4 +28,5 @@
 - **Quality & maintenance**
   - Simple benchmark script for large `.eml` / `.msg` files.
   - GitHub issue and PR templates for better bug reports and contributions.
+  - Expanded automated test suite: .msg flows, conversions, attachments/embedded files, edge/error cases, and RTF/encoding scenarios.
 
