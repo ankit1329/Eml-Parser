@@ -1,29 +1,97 @@
+/**
+ * @typedef {Object} HighlightOptions
+ * @property {string[]} [highlightKeywords] Keywords to highlight in HTML/textAsHtml.
+ * @property {boolean} [highlightCaseSensitive] When true, performs a case-sensitive match.
+ */
+
+/**
+ * @typedef {Object} ParseEmlOptions
+ * @property {boolean} [ignoreEmbedded] When true, embedded files are removed from attachments.
+ * @property {string[]} [highlightKeywords]
+ * @property {boolean} [highlightCaseSensitive]
+ */
+
+/**
+ * @typedef {Object} ParseMsgOptions
+ * @property {string[]} [highlightKeywords]
+ * @property {boolean} [highlightCaseSensitive]
+ */
+
 const simpleParser = require('mailparser').simpleParser;
 const pdf = require('html-pdf');
-const MsgReader = require('@kenjiuno/msgreader').default
+const MsgReader = require('@kenjiuno/msgreader').default;
 const decompressRTF = require('@kenjiuno/decompressrtf').decompressRTF;
-const iconv = require("iconv-lite");
-const rtfParser = require("rtf-stream-parser");
+const iconv = require('iconv-lite');
+const rtfParser = require('rtf-stream-parser');
 
-const isStringsArray = arr => arr.every(i => typeof i === "string");
+const isStringsArray = (arr) => Array.isArray(arr) && arr.every((i) => typeof i === 'string');
 
-function stream2buffer(stream) {
+/**
+ * Escape a string so it can be used safely inside a RegExp.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+const escapeRegExp = (value) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    return new Promise((resolve, reject) => {
+/**
+ * Apply keyword highlighting in-place to a parsed email-like object that
+ * exposes `html` and/or `textAsHtml` properties.
+ *
+ * @param {{ html?: string, textAsHtml?: string }} emailLike
+ * @param {HighlightOptions | undefined} options
+ */
+const highlightHtmlInPlace = (emailLike, options) => {
+  if (!options || !options.highlightKeywords || !isStringsArray(options.highlightKeywords)) {
+    return;
+  }
 
-        const _buf = [];
+  const flags = options.highlightCaseSensitive ? 'g' : 'gi';
 
-        stream.on("data", (chunk) => _buf.push(chunk));
-        stream.on("end", () => resolve(Buffer.concat(_buf)));
-        stream.on("error", (err) => reject(err));
+  options.highlightKeywords.forEach((keyword) => {
+    if (!keyword) return;
+    const safePattern = escapeRegExp(keyword);
+    const re = new RegExp(safePattern, flags);
 
-    });
-}
+    if (emailLike.html) {
+      emailLike.html = emailLike.html.replace(re, (str) => `<mark>${str}</mark>`);
+    } else if (emailLike.textAsHtml) {
+      emailLike.textAsHtml = emailLike.textAsHtml.replace(re, (str) => `<mark>${str}</mark>`);
+    }
+  });
+};
 
+/**
+ * Collect all data from a readable stream into a single Buffer.
+ *
+ * @param {import('stream').Readable} stream
+ * @returns {Promise<Buffer>}
+ */
+const streamToBuffer = (stream) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', (err) => reject(err));
+  });
+
+/**
+ * EmlParser wraps a readable stream for `.eml` or `.msg` content and exposes
+ * a set of convenience methods to parse, inspect and convert the message.
+ *
+ * @constructor
+ * @param {import('stream').Readable} fileReadStream Node.js readable stream pointing to an .eml or .msg file.
+ */
 module.exports = EmlParser = function (fileReadStream) {
+    this.parsedEmail = undefined;
 
-    this.parsedEmail;
-
+    /**
+     * Parse the underlying `.eml` stream using `mailparser` and cache the result.
+     *
+     * @param {ParseEmlOptions} [options]
+     * @returns {Promise<import('mailparser').ParsedMail>}
+     */
     this.parseEml = (options) => {
         return new Promise((resolve, reject) => {
             if (this.parsedEmail) {
@@ -34,19 +102,7 @@ module.exports = EmlParser = function (fileReadStream) {
                         if (options && options.ignoreEmbedded) {
                             result.attachments = result.attachments.filter(att => att.contentDisposition === 'attachment');
                         }
-                        if (options && options.highlightKeywords) {
-                            if (!Array.isArray(options.highlightKeywords)) throw new Error('err: highlightKeywords is not an array, expected: String[]');
-                            if (!isStringsArray(options.highlightKeywords)) throw new Error('err: highlightKeywords contains non-string values, expected: String[]');
-                            let flags = 'gi';
-                            if (options.highlightCaseSensitive) flags = 'g';
-                            options.highlightKeywords.forEach(keyword => {
-                                if (result.html) {
-                                    result.html = result.html.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
-                                } else if (result.textAsHtml) {
-                                    result.textAsHtml = result.textAsHtml.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
-                                }
-                            });
-                        }
+                        highlightHtmlInPlace(result, options);
                         this.parsedEmail = result;
                         resolve(this.parsedEmail);
                     })
@@ -57,8 +113,14 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Parse the underlying `.msg` stream using `@kenjiuno/msgreader` and cache the result.
+     *
+     * @param {ParseMsgOptions} [options]
+     * @returns {Promise<unknown>} Parsed message object as returned by msgreader.
+     */
     this.parseMsg = async (options) => {
-        let buffer = await stream2buffer(fileReadStream)
+        let buffer = await streamToBuffer(fileReadStream)
         let emailData = new MsgReader(buffer)
         this.parsedEmail = emailData.getFileData();
         if (this.parsedEmail.compressedRtf) {
@@ -88,19 +150,24 @@ module.exports = EmlParser = function (fileReadStream) {
             this.parsedEmail.attachments = [];
         }
 
-        if (options && options.highlightKeywords) {
-            if (!Array.isArray(options.highlightKeywords)) throw new Error('err: highlightKeywords is not an array, expected: String[]');
-            if (!isStringsArray(options.highlightKeywords)) throw new Error('err: highlightKeywords contains non-string values, expected: String[]');
-            let flags = 'gi';
-            if (options.highlightCaseSensitive) flags = 'g';
-            options.highlightKeywords.forEach(keyword => {
-                this.parsedEmail.html = this.parsedEmail.html.replace(new RegExp(keyword, flags), function (str) { return `<mark>${str}</mark>` });
-            });
-        }
+        highlightHtmlInPlace(this.parsedEmail, options);
         delete this.parsedEmail.compressedRtf;
         return this.parsedEmail;
     }
 
+    /**
+     * Extract a simplified headers object from an `.eml` file.
+     *
+     * @returns {Promise<{
+     *   subject: string,
+     *   from: Array<{ name: string, address: string }>,
+     *   to: Array<{ name: string, address: string }>,
+     *   cc?: Array<{ name: string, address: string }>,
+     *   date: Date,
+     *   inReplyTo?: string,
+     *   messageId: string
+     * }>}
+     */
     this.getEmailHeaders = () => {
         return new Promise((resolve, reject) => {
             this.parseEml()
@@ -122,6 +189,17 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Extract a simplified headers object from a `.msg` file.
+     *
+     * @returns {Promise<{
+     *   subject: string,
+     *   from: Array<{ name: string, address: string }>,
+     *   to: Array<{ name: string, address: string }>,
+     *   cc: Array<{ name: string, address: string }>,
+     *   date: string | Date
+     * }>}
+     */
     this.getMessageHeaders = () => {
         return new Promise((resolve, reject) => {
             this.parseMsg()
@@ -144,23 +222,29 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get the body of an `.eml` file as HTML without headers (subject, from, etc.).
+     *
+     * @param {HighlightOptions} [options]
+     * @returns {Promise<string>}
+     */
     this.getEmailBodyHtml = (options) => {
-        let replacements = {
+        const replacements = {
             "’": "'",
             "–": "&#9472;"
-        }
+        };
         return new Promise((resolve, reject) => {
             this.parseEml(options)
                 .then(result => {
                     let htmlString = result.html || result.textAsHtml;
                     if (!htmlString) {
-                        resolve('');
+                        return resolve('');
                     }
-                    for (var key in replacements) {
-                        let re = new RegExp(key, 'gi')
+                    Object.keys(replacements).forEach((key) => {
+                        const re = new RegExp(escapeRegExp(key), 'gi');
                         htmlString = htmlString.replace(re, replacements[key]);
-                    }
-                    resolve(htmlString);
+                    });
+                    return resolve(htmlString);
                 })
                 .catch(err => {
                     reject(err);
@@ -169,6 +253,12 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get the body of a `.msg` file as HTML without headers.
+     *
+     * @param {HighlightOptions} [options]
+     * @returns {Promise<string>}
+     */
     this.getMessageBodyHtml = (options) => {
         return new Promise((resolve, reject) => {
             this.parseMsg(options)
@@ -181,6 +271,13 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get the full `.eml` message rendered as HTML including basic header
+     * information (subject, from, to, cc, date).
+     *
+     * @param {HighlightOptions} [options]
+     * @returns {Promise<string>}
+     */
     this.getEmailAsHtml = (options) => {
         return new Promise((resolve, reject) => {
             this.parseEml(options)
@@ -218,6 +315,13 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get the full `.msg` message rendered as HTML including basic header
+     * information (subject, from, to, cc, date).
+     *
+     * @param {HighlightOptions} [options]
+     * @returns {Promise<string>}
+     */
     this.getMessageAsHtml = (options) => {
         return new Promise((resolve, reject) => {
             this.parseMsg(options)
@@ -258,6 +362,15 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Convert an `.eml` message to a PDF/PNG/JPEG stream.
+     *
+     * @param {'pdf'|'jpeg'|'png'} [type]
+     * @param {'potrait'|'landscape'} [orientation]
+     * @param {'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'} [format]
+     * @param {HighlightOptions} [outerOptions]
+     * @returns {Promise<import('stream').Readable>}
+     */
     this.convertEmailToStream = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
@@ -284,6 +397,15 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Convert a `.msg` message to a PDF/PNG/JPEG stream.
+     *
+     * @param {'pdf'|'jpeg'|'png'} [type]
+     * @param {'potrait'|'landscape'} [orientation]
+     * @param {'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'} [format]
+     * @param {HighlightOptions} [outerOptions]
+     * @returns {Promise<import('stream').Readable>}
+     */
     this.convertMessageToStream = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
@@ -310,6 +432,15 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Convert an `.eml` message to a PDF/PNG/JPEG buffer.
+     *
+     * @param {'pdf'|'jpeg'|'png'} [type]
+     * @param {'potrait'|'landscape'} [orientation]
+     * @param {'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'} [format]
+     * @param {HighlightOptions} [outerOptions]
+     * @returns {Promise<Buffer>}
+     */
     this.convertEmailToBuffer = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
@@ -336,6 +467,15 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Convert a `.msg` message to a PDF/PNG/JPEG buffer.
+     *
+     * @param {'pdf'|'jpeg'|'png'} [type]
+     * @param {'potrait'|'landscape'} [orientation]
+     * @param {'A3'|'A4'|'A5'|'Legal'|'Letter'|'Tabloid'} [format]
+     * @param {HighlightOptions} [outerOptions]
+     * @returns {Promise<Buffer>}
+     */
     this.convertMessageToBuffer = (type, orientation, format, outerOptions) => {
         return new Promise((resolve, reject) => {
             let options = {
@@ -362,6 +502,12 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get attachments from an `.eml` file.
+     *
+     * @param {{ ignoreEmbedded?: boolean }} [options]
+     * @returns {Promise<Array<unknown>>}
+     */
     this.getEmailAttachments = (options) => {
         return new Promise((resolve, reject) => {
             this.parseEml()
@@ -377,6 +523,11 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get attachments from a `.msg` file.
+     *
+     * @returns {Promise<Array<unknown>>}
+     */
     this.getMessageAttachments = () => {
         return new Promise((resolve, reject) => {
             this.parseMsg()
@@ -389,6 +540,11 @@ module.exports = EmlParser = function (fileReadStream) {
         })
     }
 
+    /**
+     * Get only embedded (non-attachment) files from an `.eml` file.
+     *
+     * @returns {Promise<Array<unknown>>}
+     */
     this.getEmailEmbeddedFiles = () => {
         return new Promise((resolve, reject) => {
             this.parseEml()
