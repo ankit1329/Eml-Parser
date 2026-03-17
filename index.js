@@ -77,6 +77,36 @@ const streamToBuffer = (stream) =>
   });
 
 /**
+ * Format a Date as "17 Mar 2026, 09:59 PM".
+ *
+ * @param {Date|string} date
+ * @returns {string}
+ */
+const formatHeaderDate = (date) => {
+  const d = new Date(date);
+  const day = d.getDate();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${day} ${month} ${year}, ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+};
+
+/**
+ * Generate an inline circular avatar with the first letter of the given name.
+ *
+ * @param {string} name
+ * @returns {string} HTML string for the avatar element.
+ */
+const getInitialAvatar = (name) => {
+  const initial = (name || '?').charAt(0).toUpperCase();
+  return `<div style="width:36px;height:36px;border-radius:50%;background-color:#00897B;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;flex-shrink:0;">${initial}</div>`;
+};
+
+/**
  * EmlParser wraps a readable stream for `.eml` or `.msg` content and exposes
  * a set of convenience methods to parse, inspect and convert the message.
  *
@@ -275,34 +305,50 @@ module.exports = EmlParser = function (fileReadStream) {
      * Get the full `.eml` message rendered as HTML including basic header
      * information (subject, from, to, cc, date).
      *
-     * @param {HighlightOptions} [options]
+     * @param {HighlightOptions & { includeSubject?: boolean }} [options]
      * @returns {Promise<string>}
      */
     this.getEmailAsHtml = (options) => {
+        const includeSubject = !options || options.includeSubject === undefined || options.includeSubject === true;
         return new Promise((resolve, reject) => {
             this.parseEml(options)
                 .then(result => {
 
+                    const fromName = result.from?.value?.[0]?.name || '';
+                    const fromAddress = result.from?.value?.[0]?.address || '';
+                    const avatar = getInitialAvatar(fromName || fromAddress);
+                    const dateStr = formatHeaderDate(result.date);
+
                     let headerHtml = `
-                    <div style="border:1px solid gray;margin-bottom:5px;padding:5px">
-                        <h2>${result.subject}</h2>
-                        <div style="display:flex;width:100%;">
-                            <span style="font-weight:600;">From:&nbsp;${result.from.html}</span>
-                            <span style="flex: 1 1 auto;"></span>
-                            <span style="color:silver;font-weight:600">${new Date(result.date).toLocaleString()}</span>
-                        </div>
+                    <div style="border-bottom:1px solid #e0e0e0;font-family:Arial,sans-serif;">
+                    `
+                    if (includeSubject) {
+                        headerHtml += `<h2 style="margin:0 0 12px 0;font-size:18px;">${result.subject}</h2>`;
+                    }
+                    headerHtml += `
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            ${avatar}
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;align-items:center;">
+                                    <span style="font-weight:600;font-size:14px;">${fromName || fromAddress}</span>
+                                    <span style="color:#666;font-size:13px;margin-left:6px;">&lt;${fromAddress}&gt;</span>
+                                    <span style="flex:1 1 auto;"></span>
+                                    <span style="color:#888;font-size:13px;white-space:nowrap;">${dateStr}</span>
+                                </div>
                     `
                     if (result.to) {
-                        headerHtml = headerHtml + `<div style="font-size:12px;">To:&nbsp;${result.to.html}</div>`
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;">To:&nbsp;${result.to.html}</div>`;
                     }
                     if (result.cc) {
-                        headerHtml = headerHtml + `<div style="font-size:12px;">Cc:&nbsp;${result.cc.html}</div></div>`
-                    } else {
-                        headerHtml = headerHtml + `</div>`;
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:2px;">Cc:&nbsp;${result.cc.html}</div>`;
                     }
+                    headerHtml += `
+                            </div>
+                        </div>
+                    </div>`;
                     this.getEmailBodyHtml()
                         .then(bodyHtml => {
-                            resolve(headerHtml + `<p>${bodyHtml}</p>`)
+                            resolve(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${headerHtml}<div>${bodyHtml}</div></body></html>`)
                         })
                         .catch(err => {
                             reject(err);
@@ -319,10 +365,11 @@ module.exports = EmlParser = function (fileReadStream) {
      * Get the full `.msg` message rendered as HTML including basic header
      * information (subject, from, to, cc, date).
      *
-     * @param {HighlightOptions} [options]
+     * @param {HighlightOptions & { includeSubject?: boolean }} [options]
      * @returns {Promise<string>}
      */
     this.getMessageAsHtml = (options) => {
+        const includeSubject = !options || options.includeSubject === undefined || options.includeSubject === true;
         return new Promise((resolve, reject) => {
             this.parseMsg(options)
                 .then(result => {
@@ -336,24 +383,37 @@ module.exports = EmlParser = function (fileReadStream) {
                     ccRecipients.forEach(recipient => {
                         ccHtml += `<span>${recipient.name}</span> &lt;<a href=\"mailto:${recipient.address}\" class=\"mp_address_email\">${recipient.address}</a>&gt;` + ';'
                     });
+                    const avatar = getInitialAvatar(result.senderName || result.senderEmail);
+                    const dateStr = formatHeaderDate(result.messageDeliveryTime);
+
                     let headerHtml = `
-                    <div style="border:1px solid gray;margin-bottom:5px;padding:5px">
-                        <h2>${result.subject}</h2>
-                        <div style="display:flex;width:100%;">
-                            <span style="font-weight:600;">From:&nbsp;<span>${result.senderName}</span> &lt;<a href=\"mailto:${result.senderEmail}\" class=\"mp_address_email\">${result.senderEmail}</a>&gt;</span>
-                            <span style="flex: 1 1 auto;"></span>
-                            <span style="color:silver;font-weight:600">${new Date(result.messageDeliveryTime).toLocaleString()}</span>
-                        </div>
+                    <div style="border-bottom:1px solid #e0e0e0;font-family:Arial,sans-serif;">
+                    `
+                    if (includeSubject) {
+                        headerHtml += `<h2 style="margin:0 0 12px 0;font-size:18px;">${result.subject}</h2>`;
+                    }
+                    headerHtml += `
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            ${avatar}
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;align-items:center;">
+                                    <span style="font-weight:600;font-size:14px;">${result.senderName || result.senderEmail}</span>
+                                    <span style="color:#666;font-size:13px;margin-left:6px;">&lt;<a href="mailto:${result.senderEmail}" class="mp_address_email" style="color:#666;text-decoration:none;">${result.senderEmail}</a>&gt;</span>
+                                    <span style="flex:1 1 auto;"></span>
+                                    <span style="color:#888;font-size:13px;white-space:nowrap;">${dateStr}</span>
+                                </div>
                     `
                     if (toHtml) {
-                        headerHtml = headerHtml + `<div style="font-size:12px;">To:&nbsp;${toHtml}</div>`
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;">To:&nbsp;${toHtml}</div>`;
                     }
                     if (ccHtml) {
-                        headerHtml = headerHtml + `<div style="font-size:12px;">Cc:&nbsp;${ccHtml}</div>`
-                    } else {
-                        headerHtml = headerHtml + `</div>`;
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:2px;">Cc:&nbsp;${ccHtml}</div>`;
                     }
-                    resolve(headerHtml + `<p>${result.html}</p>`)
+                    headerHtml += `
+                            </div>
+                        </div>
+                    </div>`;
+                    resolve(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${headerHtml}<div>${result.html}</div></body></html>`)
                 })
                 .catch(err => {
                     reject(err);

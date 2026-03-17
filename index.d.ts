@@ -53,9 +53,9 @@ export class EmlParser {
 
   getMessageBodyHtml(options?: HighlightOptions): Promise<string>;
 
-  getEmailAsHtml(options?: HighlightOptions): Promise<string>;
+  getEmailAsHtml(options?: HighlightOptions & { includeSubject?: boolean }): Promise<string>;
 
-  getMessageAsHtml(options?: HighlightOptions): Promise<string>;
+  getMessageAsHtml(options?: HighlightOptions & { includeSubject?: boolean }): Promise<string>;
 
   convertEmailToStream(
     type?: 'pdf' | 'jpeg' | 'png',
