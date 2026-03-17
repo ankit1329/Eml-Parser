@@ -129,11 +129,12 @@ new EmlParser(fs.createReadStream('test.eml'))
 ```
 
 #### getEmailAsHtml
-takes 1 optional argument, returns whole email as a html string (including headers like subject, from, etc).
+takes 1 optional argument, returns the whole email as a complete HTML document string (with `<!DOCTYPE html>`, `<html>`, `<head>`, `<body>`) including a styled header section with sender avatar, from, to, cc, date and the email body.
 * `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
+* `{includeSubject: boolean}`, defaults to `true`. Set to `false` to exclude the subject line from the header section.
 ```
 new EmlParser(fs.createReadStream('test.eml'))
-.getEmailAsHtml()
+.getEmailAsHtml({ includeSubject: false })
 .then(htmlString  => {
 	fs.writeFileSync('abc.html',htmlString)	;
 })
@@ -284,8 +285,21 @@ new EmlParser(fs.createReadStream('test.msg'))
 })
 ```
 #### getMessageHeaders
+Same as `getEmailHeaders`, but for `.msg` files.
+
 #### getMessageBodyHtml
+Same as `getEmailBodyHtml`, but for `.msg` files.
+
 #### getMessageAsHtml
+Same as `getEmailAsHtml`, but for `.msg` files. Accepts the same options:
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`
+* `{includeSubject: boolean}`, defaults to `true`.
+
 #### convertMessageToStream
+Same as `convertEmailToStream`, but for `.msg` files.
+
 #### convertMessageToBuffer
+Same as `convertEmailToBuffer`, but for `.msg` files.
+
 #### getMessageAttachments
+Same as `getEmailAttachments`, but for `.msg` files.
