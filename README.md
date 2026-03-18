@@ -1,16 +1,31 @@
 # Eml-Parser
 
-### Parse .eml files or convert to pdf, html, jpeg or png format. Extract headers and attachments from .eml files.
+### Parse `.eml` and `.msg` files, extract headers and attachments, or convert messages to PDF / HTML / image formats.
 
-## installation
-`npm i eml-parser --save`
+## Installation
 
-## Quick Start
+```bash
+npm install eml-parser
 ```
-const  EmlParser = require('eml-parser');
- const  fs = require('fs');
- 
- let  emailFile = fs.createReadStream('./test.eml'); // or test.msg
+
+Requires **Node.js 18 or later**.
+
+## Quick start
+
+```js
+const fs = require('fs');
+const EmlParser = require('eml-parser');
+
+const emailFile = fs.createReadStream('./test.eml'); // or test.msg
+
+new EmlParser(emailFile)
+  .convertEmailToStream('pdf')
+  .then((stream) => {
+    stream.pipe(fs.createWriteStream(emailFile.path + '.pdf'));
+  })
+  .catch((err) => {
+    console.error(err);
+  });
 ```
 #### .eml
  ``` 
@@ -32,11 +47,10 @@ new  EmlParser(emailFile).convertMessageToStream('pdf')
 	console.log(err);
 })
  ```
-## Change Log
-### 1.2.2
-* added options `{highlightKeywords: String[], highlightCaseSensitive: true| undefined}` to highlight keywords provided in `highlightKeywords` option, `highlightCaseSensitive: true` will do case sensitive match to highlight keywords. Works with all functions which return email content in any format (html, pdf, image, etc).
-### 2.0.0
-* added .msg parser. Parsed results do not have the same fields, check result object below.
+## TypeScript
+
+This package ships with `index.d.ts` so you can use it directly from TypeScript.
+
 ## Reference
 
 ### Class: EmlParser
@@ -115,11 +129,21 @@ new EmlParser(fs.createReadStream('test.eml'))
 ```
 
 #### getEmailAsHtml
-takes 1 optional argument, returns whole email as a html string (including headers like subject, from, etc).
+takes 1 optional argument, returns the whole email as a complete HTML document string (with `<!DOCTYPE html>`, `<html>`, `<head>`, `<body>`) including a styled header section with sender avatar, from, to, cc, date and the email body.
+
+The header uses an Outlook-style layout:
+- Circular avatar with the sender's initial
+- From name and address on the first row
+- To recipients and formatted date on the second row
+- Cc recipients on the third row
+- Long recipient lists (>3) are automatically truncated with a CSS-only "+N more" toggle that expands on click (no JavaScript)
+
+Options:
 * `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
+* `{includeSubject: boolean}`, defaults to `true`. Set to `false` to exclude the subject line from the header section.
 ```
 new EmlParser(fs.createReadStream('test.eml'))
-.getEmailAsHtml()
+.getEmailAsHtml({ includeSubject: false })
 .then(htmlString  => {
 	fs.writeFileSync('abc.html',htmlString)	;
 })
@@ -175,12 +199,6 @@ new  EmlParser(file)
 	attachments.forEach(attachment  => {
 		//attachment.content is the buffer object
 		console.log(attachment.filename, attachment.content);
-		.then(res  => {
-			console.log(res);
-		})
-		.catch(err  => {
-		console.log(err);
-		})
 	});
 })
 .catch(err  => {
@@ -198,12 +216,6 @@ new  EmlParser(file)
 	embeddedFiles.forEach(embed  => {
 		//embed.content is the buffer object
 		console.log(embed.filename, embed.content);
-		.then(res  => {
-			console.log(res);
-		})
-		.catch(err  => {
-		console.log(err);
-		})
 	});
 })
 .catch(err  => {
@@ -270,8 +282,21 @@ new EmlParser(fs.createReadStream('test.msg'))
 })
 ```
 #### getMessageHeaders
+Same as `getEmailHeaders`, but for `.msg` files.
+
 #### getMessageBodyHtml
+Same as `getEmailBodyHtml`, but for `.msg` files.
+
 #### getMessageAsHtml
+Same as `getEmailAsHtml`, but for `.msg` files. Accepts the same options:
+* `{highlightKeywords: String[], highlightCaseSensitive: true}`
+* `{includeSubject: boolean}`, defaults to `true`.
+
 #### convertMessageToStream
+Same as `convertEmailToStream`, but for `.msg` files.
+
 #### convertMessageToBuffer
+Same as `convertEmailToBuffer`, but for `.msg` files.
+
 #### getMessageAttachments
+Same as `getEmailAttachments`, but for `.msg` files.
