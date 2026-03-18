@@ -1,6 +1,6 @@
 {
   "name": "eml-parser",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Parse .eml and .msg files or convert to pdf, html, jpeg or png format. Extract headers and attachments from .eml and msg files.",
   "main": "index.js",
   "types": "index.d.ts",
@@ -31,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ankit1329/Eml-Parser.git"
+    "url": "git+https://github.com/ankit1329/Eml-Parser.git"
   },
   "author": "Ankit <akhouriankitprakash@gmail.com> (https://www.linkedin.com/in/ankit1329)",
   "license": "MIT",
