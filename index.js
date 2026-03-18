@@ -96,6 +96,36 @@ const formatHeaderDate = (date) => {
 };
 
 /**
+ * Format an array of recipients into an HTML string, truncating after
+ * `maxVisible` entries and appending a clickable "+N more" toggle that
+ * expands to show all recipients (CSS-only, no JavaScript).
+ *
+ * @param {{ name?: string, address: string }[]} recipients
+ * @param {number} [maxVisible=3]
+ * @returns {string} HTML string for the recipient list.
+ */
+let _recipientIdCounter = 0;
+const formatRecipientList = (recipients, maxVisible = 3) => {
+  if (!recipients || recipients.length === 0) return '';
+  const renderAddress = (r) =>
+    `<span class="mp_address_group">${r.name ? `<span class="mp_address_name">${r.name}</span> ` : ''}&lt;<a href="mailto:${r.address}" class="mp_address_email">${r.address}</a>&gt;</span>`;
+
+  if (recipients.length <= maxVisible) {
+    return recipients.map(renderAddress).join('; ');
+  }
+
+  const id = `rl${++_recipientIdCounter}`;
+  const visible = recipients.slice(0, maxVisible).map(renderAddress).join('; ');
+  const hidden = recipients.slice(maxVisible).map(renderAddress).join('; ');
+  const remaining = recipients.length - maxVisible;
+
+  return visible
+    + `<input type="checkbox" id="${id}" class="rl-toggle" style="display:none;">`
+    + `<label for="${id}" class="rl-more">+${remaining} more</label>`
+    + `<span class="rl-hidden" style="display:none;">; ${hidden}</span>`;
+};
+
+/**
  * Generate an inline circular avatar with the first letter of the given name.
  *
  * @param {string} name
@@ -103,7 +133,7 @@ const formatHeaderDate = (date) => {
  */
 const getInitialAvatar = (name) => {
   const initial = (name || '?').charAt(0).toUpperCase();
-  return `<div style="width:36px;height:36px;border-radius:50%;background-color:#00897B;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;flex-shrink:0;">${initial}</div>`;
+  return `<div style="width:28px;height:28px;border-radius:50%;background-color:#00897B;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0;vertical-align:middle;">${initial}</div>`;
 };
 
 /**
@@ -309,6 +339,7 @@ module.exports = EmlParser = function (fileReadStream) {
      * @returns {Promise<string>}
      */
     this.getEmailAsHtml = (options) => {
+        _recipientIdCounter = 0;
         const includeSubject = !options || options.includeSubject === undefined || options.includeSubject === true;
         return new Promise((resolve, reject) => {
             this.parseEml(options)
@@ -320,35 +351,31 @@ module.exports = EmlParser = function (fileReadStream) {
                     const dateStr = formatHeaderDate(result.date);
 
                     let headerHtml = `
-                    <div style="border-bottom:1px solid #e0e0e0;font-family:Arial,sans-serif;">
+                    <div style="border-bottom:1px solid #e0e0e0;font-family:Arial,sans-serif;padding-bottom:8px;">
                     `
                     if (includeSubject) {
                         headerHtml += `<h2 style="margin:0 0 12px 0;font-size:18px;">${result.subject}</h2>`;
                     }
                     headerHtml += `
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            ${avatar}
-                            <div style="flex:1;min-width:0;">
-                                <div style="display:flex;align-items:center;">
-                                    <span style="font-weight:600;font-size:14px;">${fromName || fromAddress}</span>
-                                    <span style="color:#666;font-size:13px;margin-left:6px;">&lt;${fromAddress}&gt;</span>
-                                    <span style="flex:1 1 auto;"></span>
-                                    <span style="color:#888;font-size:13px;white-space:nowrap;">${dateStr}</span>
-                                </div>
+                        <div style="line-height:1.6;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                ${avatar}
+                                <span style="font-weight:600;font-size:14px;">${fromName || fromAddress}</span>
+                                <span style="color:#666;font-size:13px;">&lt;${fromAddress}&gt;</span>
+                            </div>
                     `
-                    if (result.to) {
-                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;">To:&nbsp;${result.to.html}</div>`;
+                    if (result.to && result.to.value) {
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;padding-right:40px;display:flex;"><span style="flex-shrink:0;">To:&nbsp;</span><span style="flex:1;min-width:0;">${formatRecipientList(result.to.value)}</span><span style="flex-shrink:0;color:#888;font-size:12px;white-space:nowrap;margin-left:12px;">${dateStr}</span></div>`;
                     }
-                    if (result.cc) {
-                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:2px;">Cc:&nbsp;${result.cc.html}</div>`;
+                    if (result.cc && result.cc.value) {
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;padding-right:40px;display:flex;"><span style="flex-shrink:0;">Cc:&nbsp;</span><span style="flex:1;min-width:0;">${formatRecipientList(result.cc.value)}</span><span style="flex-shrink:0;font-size:12px;white-space:nowrap;margin-left:12px;visibility:hidden;">${dateStr}</span></div>`;
                     }
                     headerHtml += `
-                            </div>
                         </div>
                     </div>`;
                     this.getEmailBodyHtml()
                         .then(bodyHtml => {
-                            resolve(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${headerHtml}<div>${bodyHtml}</div></body></html>`)
+                            resolve(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>.rl-toggle:checked~.rl-hidden{display:inline!important}.rl-toggle:checked+.rl-more{display:none}.rl-more{color:#888;font-size:11px;cursor:pointer;margin-left:4px}.rl-more:hover{text-decoration:underline}</style></head><body>${headerHtml}<div>${bodyHtml}</div></body></html>`)
                         })
                         .catch(err => {
                             reject(err);
@@ -369,51 +396,42 @@ module.exports = EmlParser = function (fileReadStream) {
      * @returns {Promise<string>}
      */
     this.getMessageAsHtml = (options) => {
+        _recipientIdCounter = 0;
         const includeSubject = !options || options.includeSubject === undefined || options.includeSubject === true;
         return new Promise((resolve, reject) => {
             this.parseMsg(options)
                 .then(result => {
                     let toRecipients = result.recipients.filter(recipient => recipient.recipType === 'to').map(recipient => { return { name: recipient.name, address: recipient.email } })
                     let ccRecipients = result.recipients.filter(recipient => recipient.recipType === 'cc').map(recipient => { return { name: recipient.name, address: recipient.email } })
-                    let toHtml = '';
-                    let ccHtml = '';
-                    toRecipients.forEach(recipient => {
-                        toHtml += `<span>${recipient.name}</span> &lt;<a href=\"mailto:${recipient.address}\" class=\"mp_address_email\">${recipient.address}</a>&gt;` + ';'
-                    });
-                    ccRecipients.forEach(recipient => {
-                        ccHtml += `<span>${recipient.name}</span> &lt;<a href=\"mailto:${recipient.address}\" class=\"mp_address_email\">${recipient.address}</a>&gt;` + ';'
-                    });
+                    const toHtml = formatRecipientList(toRecipients);
+                    const ccHtml = formatRecipientList(ccRecipients);
                     const avatar = getInitialAvatar(result.senderName || result.senderEmail);
                     const dateStr = formatHeaderDate(result.messageDeliveryTime);
 
                     let headerHtml = `
-                    <div style="border-bottom:1px solid #e0e0e0;font-family:Arial,sans-serif;">
+                    <div style="border-bottom:1px solid #e0e0e0;font-family:Arial,sans-serif;padding-bottom:8px;">
                     `
                     if (includeSubject) {
                         headerHtml += `<h2 style="margin:0 0 12px 0;font-size:18px;">${result.subject}</h2>`;
                     }
                     headerHtml += `
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            ${avatar}
-                            <div style="flex:1;min-width:0;">
-                                <div style="display:flex;align-items:center;">
-                                    <span style="font-weight:600;font-size:14px;">${result.senderName || result.senderEmail}</span>
-                                    <span style="color:#666;font-size:13px;margin-left:6px;">&lt;<a href="mailto:${result.senderEmail}" class="mp_address_email" style="color:#666;text-decoration:none;">${result.senderEmail}</a>&gt;</span>
-                                    <span style="flex:1 1 auto;"></span>
-                                    <span style="color:#888;font-size:13px;white-space:nowrap;">${dateStr}</span>
-                                </div>
+                        <div style="line-height:1.6;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                ${avatar}
+                                <span style="font-weight:600;font-size:14px;">${result.senderName || result.senderEmail}</span>
+                                <span style="color:#666;font-size:13px;">&lt;<a href="mailto:${result.senderEmail}" class="mp_address_email" style="color:#666;text-decoration:none;">${result.senderEmail}</a>&gt;</span>
+                            </div>
                     `
                     if (toHtml) {
-                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;">To:&nbsp;${toHtml}</div>`;
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;padding-right:40px;display:flex;"><span style="flex-shrink:0;">To:&nbsp;</span><span style="flex:1;min-width:0;">${toHtml}</span><span style="flex-shrink:0;color:#888;font-size:12px;white-space:nowrap;margin-left:12px;">${dateStr}</span></div>`;
                     }
                     if (ccHtml) {
-                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:2px;">Cc:&nbsp;${ccHtml}</div>`;
+                        headerHtml += `<div style="font-size:12px;color:#555;margin-top:4px;padding-right:40px;display:flex;"><span style="flex-shrink:0;">Cc:&nbsp;</span><span style="flex:1;min-width:0;">${ccHtml}</span><span style="flex-shrink:0;font-size:12px;white-space:nowrap;margin-left:12px;visibility:hidden;">${dateStr}</span></div>`;
                     }
                     headerHtml += `
-                            </div>
                         </div>
                     </div>`;
-                    resolve(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${headerHtml}<div>${result.html}</div></body></html>`)
+                    resolve(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>.rl-toggle:checked~.rl-hidden{display:inline!important}.rl-toggle:checked+.rl-more{display:none}.rl-more{color:#888;font-size:11px;cursor:pointer;margin-left:4px}.rl-more:hover{text-decoration:underline}</style></head><body>${headerHtml}<div>${result.html}</div></body></html>`)
                 })
                 .catch(err => {
                     reject(err);

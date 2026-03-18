@@ -130,6 +130,15 @@ new EmlParser(fs.createReadStream('test.eml'))
 
 #### getEmailAsHtml
 takes 1 optional argument, returns the whole email as a complete HTML document string (with `<!DOCTYPE html>`, `<html>`, `<head>`, `<body>`) including a styled header section with sender avatar, from, to, cc, date and the email body.
+
+The header uses an Outlook-style layout:
+- Circular avatar with the sender's initial
+- From name and address on the first row
+- To recipients and formatted date on the second row
+- Cc recipients on the third row
+- Long recipient lists (>3) are automatically truncated with a CSS-only "+N more" toggle that expands on click (no JavaScript)
+
+Options:
 * `{highlightKeywords: String[], highlightCaseSensitive: true}`, (e.g: {highlightKeywords: ["foo", "bar"], highlightCaseSensitive: true}) use this to highlight certain keywords in the email's html content. `highlightCaseSensitive: true` will highlight keywords which match the case, defaults to false.
 * `{includeSubject: boolean}`, defaults to `true`. Set to `false` to exclude the subject line from the header section.
 ```
@@ -190,12 +199,6 @@ new  EmlParser(file)
 	attachments.forEach(attachment  => {
 		//attachment.content is the buffer object
 		console.log(attachment.filename, attachment.content);
-		.then(res  => {
-			console.log(res);
-		})
-		.catch(err  => {
-		console.log(err);
-		})
 	});
 })
 .catch(err  => {
@@ -213,12 +216,6 @@ new  EmlParser(file)
 	embeddedFiles.forEach(embed  => {
 		//embed.content is the buffer object
 		console.log(embed.filename, embed.content);
-		.then(res  => {
-			console.log(res);
-		})
-		.catch(err  => {
-		console.log(err);
-		})
 	});
 })
 .catch(err  => {
