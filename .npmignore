@@ -1,0 +1,10 @@
+# Dev & CI files — not needed by consumers
+.github/
+.eslintrc.cjs
+eslint.config.cjs
+.prettierrc
+tsconfig.json
+ROADMAP.md
+CHANGELOG.md
+test/
+sample/
