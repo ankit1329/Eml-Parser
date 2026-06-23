@@ -234,8 +234,8 @@ module.exports = EmlParser = function (fileReadStream) {
                 .then(result => {
                     let headers = {
                         subject: result.subject,
-                        from: result.from.value,
-                        to: result.to.value,
+                        from: result.from?.value,
+                        to: result.to?.value,
                         cc: result.cc?.value,
                         date: result.date,
                         inReplyTo: result?.inReplyTo,
